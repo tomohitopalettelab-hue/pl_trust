@@ -1,20 +1,68 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // useEffectを追加
 import Link from 'next/link';
 
 export default function OwnerDashboard() {
   const [showShareModal, setShowShareModal] = useState(false);
   
+  // --- DB連動の状態管理 ---
+  const [stats, setStats] = useState({
+    rating: 0.0,
+    totalReviews: 0,
+    newReviewsThisWeek: 0,
+    surveyCount: 0,
+    starsDistribution: [0, 0, 0, 0, 0] // 星5〜1の割合
+  });
+  const [latestFeedback, setLatestFeedback] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const brandYellow = "bg-[#F9C11C]";
   const brandYellowText = "text-[#F9C11C]";
 
-  const stats = {
-    rating: 4.8,
-    totalReviews: 1284,
-    newReviewsThisWeek: 12,
-    surveyCount: 248
-  };
+  // --- データ取得ロジック ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/surveys-get');
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+          const total = data.length;
+          const sum = data.reduce((acc, curr) => acc + curr.rating, 0);
+          const avg = (sum / total).toFixed(1);
+
+          // 今週の新規件数
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          const newThisWeek = data.filter(r => new Date(r.created_at) > oneWeekAgo).length;
+
+          // 星の分布計算
+          const dist = [5, 4, 3, 2, 1].map(star => {
+            const count = data.filter(r => r.rating === star).length;
+            return total > 0 ? (count / total) * 100 : 0;
+          });
+
+          setStats({
+            rating: parseFloat(avg),
+            totalReviews: total,
+            newReviewsThisWeek: newThisWeek,
+            surveyCount: total,
+            starsDistribution: dist
+          });
+
+          // 最新のコメントがある回答を1件取得
+          const latest = data.find(r => r.comment) || data[0];
+          setLatestFeedback(latest);
+        }
+      } catch (error) {
+        console.error("データ取得失敗:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const copyToClipboard = () => {
     const surveyUrl = window.location.origin + "/survey";
@@ -25,7 +73,7 @@ export default function OwnerDashboard() {
   return (
     <div className="min-h-screen bg-[#FDFDFD] text-black font-sans selection:bg-[#F9C11C]">
       
-      {/* --- QR共有モーダル（中央に出るよう調整） --- */}
+      {/* --- QR共有モーダル --- */}
       {showShareModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 md:p-12">
           <div 
@@ -78,10 +126,10 @@ export default function OwnerDashboard() {
           </div>
         </header>
 
-        {/* --- Grid Layout (iPad/PCで横並び) --- */}
+        {/* --- Grid Layout --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* 左側：メイン統計 (8カラム) */}
+          {/* 左側：メイン統計 */}
           <div className="lg:col-span-8 space-y-10">
             <section className="p-10 md:p-14 rounded-[4rem] bg-black text-white shadow-[12px_12px_0px_#F9C11C] relative overflow-hidden animate-in zoom-in-95 duration-700">
               <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-[#F9C11C]/10 rounded-full blur-[100px]" />
@@ -90,7 +138,7 @@ export default function OwnerDashboard() {
                 <div>
                   <p className="text-xs font-black text-gray-500 tracking-[0.2em] uppercase mb-4 italic">Total Rating</p>
                   <div className="flex items-baseline gap-2">
-                    <h2 className="text-8xl md:text-[10rem] font-black tracking-tighter italic leading-none">{stats.rating}</h2>
+                    <h2 className="text-8xl md:text-[10rem] font-black tracking-tighter italic leading-none">{stats.rating.toFixed(1)}</h2>
                     <span className={`${brandYellowText} text-3xl md:text-5xl font-black italic`}>★</span>
                   </div>
                 </div>
@@ -104,13 +152,13 @@ export default function OwnerDashboard() {
               </div>
               
               <div className="mt-16 space-y-4 relative z-10 max-w-2xl">
-                {[5, 4, 3, 2, 1].map((star) => (
+                {[5, 4, 3, 2, 1].map((star, idx) => (
                   <div key={star} className="flex items-center gap-6">
                     <span className="text-xs font-black w-4 text-gray-600 italic leading-none">{star}</span>
                     <div className="h-3 flex-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
                       <div 
                         className={`h-full rounded-full ${star >= 4 ? 'bg-[#F9C11C]' : 'bg-gray-700'} transition-all duration-1000 ease-out`} 
-                        style={{ width: `${star === 5 ? 85 : star === 4 ? 12 : 3}%` }} 
+                        style={{ width: `${stats.starsDistribution[idx]}%` }} 
                       />
                     </div>
                   </div>
@@ -119,9 +167,8 @@ export default function OwnerDashboard() {
             </section>
           </div>
 
-          {/* 右側：ボタンと最新回答 (4カラム) */}
+          {/* 右側：ボタンと最新回答 */}
           <div className="lg:col-span-4 space-y-10">
-            {/* アクションボタン */}
             <div className="grid grid-cols-2 lg:grid-cols-1 gap-6">
               <Link href="/reports" className="w-full">
                 <button className="w-full h-full bg-white border-[3px] border-black p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
@@ -137,24 +184,29 @@ export default function OwnerDashboard() {
               </a>
             </div>
 
-            {/* 最新の回答 */}
             <section>
               <div className="flex justify-between items-end mb-6 px-2">
-                <h3 className="text-xs font-black uppercase tracking-[0.3em] italic border-b-[3px] border-[#F9C11C] pb-1">Feedback</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.3em] italic border-b-[3px] border-[#F9C11C] pb-1">Latest Feedback</h3>
                 <span className="text-[10px] font-black text-gray-300 italic uppercase">All {stats.surveyCount}</span>
               </div>
               <div className="bg-white rounded-[3.5rem] border-[3px] border-black p-10 shadow-[10px_10px_0px_#000]">
-                <p className="text-sm font-black text-gray-500 mb-8 leading-relaxed italic">
-                  「接客が非常にスムーズで、説明も分かりやすかったです。また利用したいと思いました。」
-                </p>
-                <div className="flex justify-between items-center pt-8 border-t border-gray-100">
-                   <div className="flex gap-1.5 text-xl">
-                     {[...Array(5)].map((_, i) => (
-                       <span key={i} className={`${i < 4 ? 'text-[#F9C11C]' : 'text-gray-100'}`}>★</span>
-                     ))}
-                   </div>
-                   <span className="text-3xl font-black italic leading-none">4.0</span>
-                </div>
+                {latestFeedback ? (
+                  <>
+                    <p className="text-sm font-black text-gray-500 mb-8 leading-relaxed italic">
+                      「{latestFeedback.comment || "（コメントなし）"}」
+                    </p>
+                    <div className="flex justify-between items-center pt-8 border-t border-gray-100">
+                       <div className="flex gap-1.5 text-xl">
+                         {[...Array(5)].map((_, i) => (
+                           <span key={i} className={`${i < latestFeedback.rating ? 'text-[#F9C11C]' : 'text-gray-100'}`}>★</span>
+                         ))}
+                       </div>
+                       <span className="text-3xl font-black italic leading-none">{latestFeedback.rating.toFixed(1)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs font-black text-gray-300 italic text-center py-4">まだ回答がありません</p>
+                )}
               </div>
             </section>
           </div>
