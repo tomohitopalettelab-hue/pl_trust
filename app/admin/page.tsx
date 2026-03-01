@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   ]);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { changeTheme } = useTheme();
 
@@ -40,6 +41,8 @@ export default function AdminDashboard() {
         }
       } catch (e) {
         console.error("設定の読み込みに失敗しました");
+      } finally {
+        setIsLoading(false);
       }
     }
     loadSettings();
@@ -80,8 +83,22 @@ export default function AdminDashboard() {
     }
   };
 
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center font-black italic text-2xl">LOADING...</div>;
+  }
+
   return (
     <div className="min-h-screen font-sans lg:flex text-[var(--theme-text)]">
+      {/* 保存中のローディングオーバーレイ */}
+      {isSaving && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 animate-in zoom-in-95 duration-300">
+            <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+            <p className="font-black italic text-xl text-black tracking-widest">SAVING...</p>
+          </div>
+        </div>
+      )}
+
       {/* サイドナビ */}
       <aside className="hidden lg:flex w-24 xl:w-64 bg-[var(--theme-card-bg)] border-r border-[var(--theme-border)] flex-col items-center py-10 sticky top-0 h-screen">
         <div className="font-black text-[var(--theme-text)] italic text-xl mb-16 xl:text-2xl tracking-tighter">PT. ADMIN</div>

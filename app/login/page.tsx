@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // 簡易的な認証（後で環境変数などで強化も可能）
-    if (password === 'admin123') { 
+    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       localStorage.setItem('isLoggedIn', 'true');
       router.push('/admin');
     } else {
