@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTheme } from '../components/ThemeProvider';
 
 export default function AdminDashboard() {
   // --- 状態管理の settings 部分 ---
@@ -25,6 +26,8 @@ export default function AdminDashboard() {
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const { changeTheme } = useTheme();
+
   // --- DBから設定を読み込む ---
   useEffect(() => {
     async function loadSettings() {
@@ -41,9 +44,6 @@ export default function AdminDashboard() {
     }
     loadSettings();
   }, []);
-
-  const brandYellow = "bg-[#F9C11C]";
-  const brandYellowText = "text-[#F9C11C]";
 
   const addSurveyItem = () => {
     if (surveyItems.length < 20) {
@@ -81,14 +81,14 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F4F4] text-black font-sans lg:flex">
+    <div className="min-h-screen font-sans lg:flex text-[var(--theme-text)]">
       {/* サイドナビ */}
-      <aside className="hidden lg:flex w-24 xl:w-64 bg-black flex-col items-center py-10 sticky top-0 h-screen">
-        <div className="font-black text-white italic text-xl mb-16 xl:text-2xl tracking-tighter">PT. ADMIN</div>
+      <aside className="hidden lg:flex w-24 xl:w-64 bg-[var(--theme-card-bg)] border-r border-[var(--theme-border)] flex-col items-center py-10 sticky top-0 h-screen">
+        <div className="font-black text-[var(--theme-text)] italic text-xl mb-16 xl:text-2xl tracking-tighter">PT. ADMIN</div>
         <nav className="flex flex-col gap-10 flex-1">
           <div className="flex flex-col items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${brandYellow}`} />
-            <span className={`hidden xl:block text-[10px] font-black tracking-widest ${brandYellowText}`}>システム設定</span>
+            <span className={`w-3 h-3 rounded-full bg-[var(--theme-primary)]`} />
+            <span className={`hidden xl:block text-[10px] font-black tracking-widest text-[var(--theme-primary)]`}>システム設定</span>
           </div>
         </nav>
       </aside>
@@ -96,41 +96,41 @@ export default function AdminDashboard() {
       <main className="flex-1 p-5 md:p-10 lg:p-16 max-w-[1000px] mx-auto w-full space-y-10">
 
         <header>
-          <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Administrator</p>
+          <p className="text-xs font-black text-[var(--theme-text)] opacity-60 uppercase tracking-widest">Administrator</p>
           <h1 className="text-4xl font-black italic">システム設定</h1>
         </header>
 
         {/* 1. 基本・マップ設定 */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
-            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-            基本・マップ設定 <span className="text-[10px] text-gray-400 ml-2 font-normal italic">BASIC & MAP</span>
+            <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+            基本・マップ設定 <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">BASIC & MAP</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">アプリ名（メイン）</label>
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">アプリ名（メイン）</label>
               <input
                 type="text"
                 value={settings.appName}
                 onChange={(e) => setSettings({ ...settings, appName: e.target.value })}
-                className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none mb-4"
+                className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none mb-4"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">サブタイトル（イエロー部分）</label>
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">サブタイトル（イエロー部分）</label>
               <input
                 type="text"
                 value={settings.appSubtitle}
                 onChange={(e) => setSettings({ ...settings, appSubtitle: e.target.value })}
-                className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none mb-4"
+                className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none mb-4"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">Google口コミ誘導の基準（星いくつ以上？）</label>
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">Google口コミ誘導の基準（星いくつ以上？）</label>
               <select
                 value={settings.minStarsForGoogle}
                 onChange={(e) => setSettings({ ...settings, minStarsForGoogle: e.target.value })}
-                className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none"
+                className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none"
               >
                 <option value="5">星5のみ</option>
                 <option value="4">星4以上</option>
@@ -138,23 +138,23 @@ export default function AdminDashboard() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">誘導先 Google Map URL</label>
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">誘導先 Google Map URL</label>
               <input
                 type="text"
                 value={settings.googleMapUrl}
                 onChange={(e) => setSettings({ ...settings, googleMapUrl: e.target.value })}
                 placeholder="https://goo.gl/maps/..."
-                className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none"
+                className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none"
               />
             </div>
           </div>
         </section>
 
         {/* デザインテーマ選択 */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
-            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-            デザインテーマ選択 <span className="text-[10px] text-gray-400 ml-2 font-normal italic">DESIGN THEME</span>
+            <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+            デザインテーマ選択 <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">DESIGN THEME</span>
           </h2>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
@@ -167,40 +167,43 @@ export default function AdminDashboard() {
             ].map((t) => (
               <button
                 key={t.id}
-                onClick={() => setSettings({ ...settings, themeName: t.id })}
+                onClick={() => {
+                  setSettings({ ...settings, themeName: t.id });
+                  changeTheme(t.id); // プレビュー反映
+                }}
                 className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
                   settings.themeName === t.id 
-                    ? 'border-black bg-[#F8F8F8] shadow-[4px_4px_0px_#000] scale-105' 
-                    : 'border-transparent bg-white hover:bg-gray-50 opacity-60'
+                    ? 'border-[var(--theme-border)] bg-[var(--theme-text)]/5 shadow-[4px_4px_0px_var(--theme-border)] scale-105' 
+                    : 'border-transparent bg-[var(--theme-card-bg)] hover:bg-[var(--theme-text)]/5 opacity-60'
                 }`}
               >
                 <div className={`w-12 h-12 rounded-full ${t.color} ${t.border || 'border-2 border-black'} shadow-sm`} />
                 <span className="text-[10px] font-black uppercase tracking-tighter text-center">{t.name}</span>
                 {settings.themeName === t.id && (
-                  <span className="text-[10px] text-black font-bold">●選択中</span>
+                  <span className="text-[10px] text-[var(--theme-text)] font-bold">●選択中</span>
                 )}
               </button>
             ))}
           </div>
-          <p className="mt-4 text-[10px] text-gray-400 font-bold italic text-center">※選択したテーマがアンケート画面の配色・形状に即座に反映されます。</p>
+          <p className="mt-4 text-[10px] text-[var(--theme-text)] opacity-60 font-bold italic text-center">※選択したテーマがアンケート画面の配色・形状に即座に反映されます。</p>
         </section>
 
         {/* 2. アンケート項目設定 */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-black flex items-center gap-2 italic">
-              <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-              アンケート項目設定 <span className="text-[10px] text-gray-400 ml-2 font-normal italic">SURVEY ITEMS</span>
+              <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+              アンケート項目設定 <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">SURVEY ITEMS</span>
             </h2>
-            <button onClick={addSurveyItem} className={`${brandYellow} border-2 border-black px-4 py-2 rounded-xl font-black text-xs shadow-[3px_3px_0px_#000]`}>
+            <button onClick={addSurveyItem} className={`bg-[var(--theme-primary)] text-[var(--theme-on-primary)] border-2 border-[var(--theme-border)] px-4 py-2 rounded-xl font-black text-xs shadow-[3px_3px_0px_var(--theme-border)]`}>
               ＋ 項目を追加
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4">
             {surveyItems.map((item, index) => (
-              <div key={item.id} className="flex flex-col md:flex-row gap-3 bg-[#F8F8F8] p-4 border-2 border-black rounded-xl">
+              <div key={item.id} className="flex flex-col md:flex-row gap-3 bg-[var(--theme-text)]/5 p-4 border-2 border-[var(--theme-border)] rounded-xl">
                 <div className="flex items-center gap-3 flex-1">
-                  <span className="text-[10px] font-black text-gray-400 w-4">{index + 1}</span>
+                  <span className="text-[10px] font-black text-[var(--theme-text)] opacity-60 w-4">{index + 1}</span>
                   <input
                     type="text"
                     value={item.text}
@@ -213,7 +216,7 @@ export default function AdminDashboard() {
                   <select
                     value={item.type}
                     onChange={(e) => updateSurveyItem(item.id, { type: e.target.value })}
-                    className="bg-white border-2 border-black px-3 py-1 rounded-lg font-black text-xs outline-none"
+                    className="bg-[var(--theme-card-bg)] border-2 border-[var(--theme-border)] px-3 py-1 rounded-lg font-black text-xs outline-none"
                   >
                     <option value="rating">★評価(1-5)</option>
                     <option value="free">自由入力</option>
@@ -226,24 +229,24 @@ export default function AdminDashboard() {
         </section>
 
         {/* 3. AI設定 */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
-            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-            AI口コミ生成テイスト <span className="text-[10px] text-gray-400 ml-2 font-normal italic">AI ENGINE</span>
+            <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+            AI口コミ生成テイスト <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">AI ENGINE</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">生成文字数目安</label>
-              <input type="number" value={settings.aiReviewLength} onChange={(e) => setSettings({ ...settings, aiReviewLength: e.target.value })} className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none" />
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">生成文字数目安</label>
+              <input type="number" value={settings.aiReviewLength} onChange={(e) => setSettings({ ...settings, aiReviewLength: e.target.value })} className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none" />
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">口コミのテイスト（5種）</label>
+              <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">口コミのテイスト（5種）</label>
               {/* 口コミのテイスト選択部分 */}
               <select
                 value={settings.aiReviewTaste}
                 onChange={(e) => setSettings({ ...settings, aiReviewTaste: e.target.value })}
-                className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none"
+                className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none"
               >
                 <option value="random">🎲 ランダム（AIが自動で選択）</option> {/* 追加 */}
                 <option value="friendly">親しみやすい（自然な会話調）</option>
@@ -257,45 +260,45 @@ export default function AdminDashboard() {
         </section>
 
         {/* 4. 低評価時のメッセージ */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
-            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-            低評価時のメッセージ <span className="text-[10px] text-gray-400 ml-2 font-normal italic">LOW RATING MESSAGE</span>
+            <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+            低評価時のメッセージ <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">LOW RATING MESSAGE</span>
           </h2>
-          <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">星が基準より低いお客様に表示する内容</label>
+          <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">星が基準より低いお客様に表示する内容</label>
           <textarea
             rows={3}
             value={settings.lowRatingMessage}
             onChange={(e) => setSettings({ ...settings, lowRatingMessage: e.target.value })}
-            className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none resize-none focus:bg-[#F9C11C]/5"
+            className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none resize-none focus:bg-[var(--theme-primary)]/5"
             placeholder="改善を約束するメッセージを入力してください"
           />
         </section>
 
         {/* 5. サンクスページ設定 */}
-        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+        <section className="bg-[var(--theme-card-bg)] rounded-[2rem] border-3 border-[var(--theme-border)] p-8 shadow-[8px_8px_0px_var(--theme-border)]">
           <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
-            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
-            完了画面の設定 <span className="text-[10px] text-gray-400 ml-2 font-normal italic">THANK YOU PAGE</span>
+            <span className={`w-2 h-6 bg-[var(--theme-primary)] block border border-[var(--theme-border)]`} />
+            完了画面の設定 <span className="text-[10px] text-[var(--theme-text)] opacity-60 ml-2 font-normal italic">THANK YOU PAGE</span>
           </h2>
-          <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase">高評価だったお客様に表示する内容</label>
+          <label className="block text-[10px] font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase">高評価だったお客様に表示する内容</label>
           <textarea
             rows={3}
             value={settings.thanksPageContent}
             onChange={(e) => setSettings({ ...settings, thanksPageContent: e.target.value })}
-            className="w-full bg-[#F8F8F8] border-2 border-black p-4 rounded-xl font-bold outline-none resize-none"
+            className="w-full bg-[var(--theme-text)]/5 border-2 border-[var(--theme-border)] p-4 rounded-xl font-bold outline-none resize-none"
           />
         </section>
 
         {/* 下部ボタン */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 pb-20">
           <Link href="/" className="w-full md:w-auto order-2 md:order-1">
-            <button className="w-full md:w-auto bg-white border-3 border-black px-12 py-6 rounded-[2rem] font-black text-xl shadow-[8px_8px_0px_#000] active:scale-95 transition-all">← 戻る</button>
+            <button className="w-full md:w-auto bg-[var(--theme-card-bg)] border-3 border-[var(--theme-border)] px-12 py-6 rounded-[2rem] font-black text-xl shadow-[8px_8px_0px_var(--theme-border)] active:scale-95 transition-all">← 戻る</button>
           </Link>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`w-full md:w-auto order-1 md:order-2 bg-black text-white px-20 py-6 rounded-[2rem] font-black text-xl shadow-[8px_8px_0px_#F9C11C] active:scale-95 transition-all ${isSaving ? 'opacity-50' : ''}`}
+            className={`w-full md:w-auto order-1 md:order-2 bg-[var(--theme-text)] text-[var(--theme-bg)] px-20 py-6 rounded-[2rem] font-black text-xl shadow-[8px_8px_0px_var(--theme-primary)] active:scale-95 transition-all ${isSaving ? 'opacity-50' : ''}`}
           >
             {isSaving ? "保存中..." : "設定を保存して反映"}
           </button>

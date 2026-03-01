@@ -22,9 +22,6 @@ export default function SurveyPage() {
   const [appSettings, setAppSettings] = useState<any>(null);
   const [surveyItems, setSurveyItems] = useState<any[]>([]);
 
-  const brandYellow = "bg-[#F9C11C]";
-  const brandYellowText = "text-[#F9C11C]";
-
   // --- ここを追加 ---
   // 管理画面の設定(appSettings)にテーマ名があればそれを、なければ standard を使います
   const theme = THEMES[appSettings?.themeName] || THEMES.standard;
@@ -154,17 +151,17 @@ export default function SurveyPage() {
       {[5, 4, 3, 2, 1].map((star) => {
         const isSelected = selectedRating === star;
         const getBgColor = (s: number) => {
-          if (isSelected) return brandYellow;
-          if (s === 5) return brandYellow;
-          if (s === 4) return "bg-[#F9C11C]/60";
-          if (s === 3) return "bg-[#F9C11C]/30";
-          if (s === 2) return "bg-[#F9C11C]/10";
-          return "bg-white";
+          if (isSelected) return "bg-[var(--theme-primary)] text-[var(--theme-on-primary)]";
+          if (s === 5) return "bg-[var(--theme-primary)] text-[var(--theme-on-primary)]";
+          if (s === 4) return "bg-[var(--theme-primary)]/60";
+          if (s === 3) return "bg-[var(--theme-primary)]/30";
+          if (s === 2) return "bg-[var(--theme-primary)]/10";
+          return "bg-[var(--theme-card-bg)]";
         };
 
         return (
           <button key={star} onClick={() => onSelect(star)}
-            className={`relative flex items-center justify-between p-6 rounded-2xl border-3 border-black font-black text-xl transition-all duration-200 active:scale-95 shadow-[6px_6px_0px_#000] ${getBgColor(star)} ${isSelected ? `translate-x-[2px] translate-y-[2px] shadow-none` : ''}`}
+            className={`relative flex items-center justify-between p-6 rounded-2xl border-3 border-[var(--theme-border)] font-black text-xl transition-all duration-200 active:scale-95 shadow-[6px_6px_0px_var(--theme-border)] ${getBgColor(star)} ${isSelected ? `translate-x-[2px] translate-y-[2px] shadow-none` : ''}`}
           >
             <span className="flex items-center gap-3">
               <span className="text-2xl">{star >= 4 ? '😊' : star === 3 ? '😐' : '😞'}</span>
@@ -172,7 +169,7 @@ export default function SurveyPage() {
             </span>
             <div className="flex">
               {[...Array(5)].map((_, i) => (
-                <span key={i} className={`text-sm ${i < star ? 'text-black' : 'text-gray-200'}`}>★</span>
+                <span key={i} className={`text-sm ${i < star ? 'text-[var(--theme-text)]' : 'text-[var(--theme-border)] opacity-30'}`}>★</span>
               ))}
             </div>
           </button>
@@ -184,12 +181,12 @@ export default function SurveyPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black italic tracking-tighter">LOADING...</div>;
 
   return (
-    <div className={`min-h-screen ${theme.bg} text-black font-sans flex flex-col items-center justify-center p-6 overflow-hidden`}>
+    <div className={`min-h-screen ${theme.bg} text-[var(--theme-text)] font-sans flex flex-col items-center justify-center p-6 overflow-hidden`}>
 
       {step === -1 ? (
         /* --- STEP -1: インパクト抜群のスタート画面 --- */
         <main className={`w-full max-w-md ${theme.card} p-10 flex flex-col items-center text-center space-y-8 animate-in zoom-in-95 duration-500`}>
-          <div className={`w-24 h-24 ${theme.accentBg} border-4 border-black rounded-[2rem] flex items-center justify-center text-5xl shadow-[6px_6px_0px_#000] -rotate-3`}>
+          <div className={`w-24 h-24 ${theme.accentBg} border-4 border-[var(--theme-border)] rounded-[2rem] flex items-center justify-center text-5xl shadow-[6px_6px_0px_var(--theme-border)] -rotate-3`}>
             ✨
           </div>
           <div className="space-y-2">
@@ -216,8 +213,8 @@ export default function SurveyPage() {
         <div className="w-full max-w-md flex flex-col items-center">
           {/* プログレスバー */}
           <div className="w-full mb-12">
-            <div className="h-4 bg-white border-2 border-black rounded-full overflow-hidden shadow-[4px_4px_0px_#000]">
-              <div className={`h-full ${brandYellow} border-r-2 border-black transition-all duration-500`}
+            <div className="h-4 bg-[var(--theme-card-bg)] border-2 border-[var(--theme-border)] rounded-full overflow-hidden shadow-[4px_4px_0px_var(--theme-border)]">
+              <div className={`h-full bg-[var(--theme-primary)] border-r-2 border-[var(--theme-border)] transition-all duration-500`}
                 style={{ width: `${((step + 1) / (surveyItems.length + 1)) * 100}%` }} />
             </div>
           </div>
@@ -225,8 +222,8 @@ export default function SurveyPage() {
           <div className="w-full flex flex-col justify-center">
             {step < surveyItems.length ? (
               <div key={step} className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <p className="text-xs font-black text-gray-400 mb-2 uppercase italic tracking-tighter">Question {step + 1}</p>
-                <h2 className={`text-3xl font-black leading-tight mb-10 italic ${step === 0 ? 'underline decoration-[#F9C11C] decoration-8 underline-offset-4' : ''}`}>
+                <p className="text-xs font-black text-[var(--theme-text)] opacity-60 mb-2 uppercase italic tracking-tighter">Question {step + 1}</p>
+                <h2 className={`text-3xl font-black leading-tight mb-10 italic ${step === 0 ? 'underline decoration-[var(--theme-primary)] decoration-8 underline-offset-4' : ''}`}>
                   {surveyItems[step].text}
                 </h2>
 
@@ -238,13 +235,13 @@ export default function SurveyPage() {
                       rows={5}
                       value={answers[surveyItems[step].id] || ""}
                       onChange={(e) => setAnswers({ ...answers, [surveyItems[step].id]: e.target.value })}
-                      className="w-full bg-white border-3 border-black p-5 rounded-2xl font-bold outline-none focus:bg-[#F9C11C]/5 shadow-[6px_6px_0px_#000]"
+                      className="w-full bg-[var(--theme-card-bg)] text-[var(--theme-text)] border-3 border-[var(--theme-border)] p-5 rounded-2xl font-bold outline-none focus:bg-[var(--theme-primary)]/5 shadow-[6px_6px_0px_var(--theme-border)]"
                       placeholder="こちらにご入力ください..."
                     />
                     <button
                       onClick={() => handleNext(answers[surveyItems[step].id])}
                       disabled={!answers[surveyItems[step].id]}
-                      className="w-full bg-black text-white p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_#F9C11C] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all disabled:opacity-50"
+                      className="w-full bg-[var(--theme-text)] text-[var(--theme-bg)] p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_var(--theme-primary)] border-2 border-transparent active:translate-x-1 active:translate-y-1 active:shadow-none transition-all disabled:opacity-50"
                     >
                       次へ進む
                     </button>
@@ -258,21 +255,21 @@ export default function SurveyPage() {
                   /* --- 【高評価ルート】口コミ投稿へ誘導 --- */
                   <>
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-black rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-6 shadow-[8px_8px_0px_#F9C11C]">✨</div>
+                      <div className="w-20 h-20 bg-[var(--theme-text)] text-[var(--theme-bg)] rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-6 shadow-[8px_8px_0px_var(--theme-primary)]">✨</div>
                       <h2 className="text-3xl font-black italic">高評価ありがとうございます！</h2>
-                      <p className="text-gray-400 font-bold text-xs mt-4 leading-relaxed">AIが作成した文章をGoogle口コミに投稿しませんか？</p>
+                      <p className="text-[var(--theme-text)] opacity-60 font-bold text-xs mt-4 leading-relaxed">AIが作成した文章をGoogle口コミに投稿しませんか？</p>
                     </div>
 
-                    <div className="relative bg-white border-3 border-black rounded-[2rem] p-5 shadow-[8px_8px_0px_#000]">
+                    <div className="relative bg-[var(--theme-card-bg)] border-3 border-[var(--theme-border)] rounded-[2rem] p-5 shadow-[8px_8px_0px_var(--theme-border)]">
                       <textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        className="w-full h-32 bg-transparent font-bold text-sm outline-none resize-none leading-relaxed"
+                        className="w-full h-32 bg-transparent text-[var(--theme-text)] font-bold text-sm outline-none resize-none leading-relaxed"
                         placeholder="AIでおまかせ、またはこちらに入力..."
                       />
                       {isGenerating && (
                         <div className="absolute inset-0 bg-white/90 rounded-[2rem] flex flex-col items-center justify-center gap-2">
-                          <div className="w-6 h-6 border-4 border-black border-t-[#F9C11C] rounded-full animate-spin"></div>
+                          <div className="w-6 h-6 border-4 border-black border-t-[var(--theme-primary)] rounded-full animate-spin"></div>
                         </div>
                       )}
                     </div>
@@ -280,14 +277,14 @@ export default function SurveyPage() {
                     <div className="grid gap-4">
                       <button
                         onClick={generateAiComment}
-                        className={`${brandYellow} border-3 border-black p-5 rounded-2xl font-black shadow-[6px_6px_0px_#000] active:scale-95 transition-all`}
+                        className={`bg-[var(--theme-primary)] text-[var(--theme-on-primary)] border-3 border-[var(--theme-border)] p-5 rounded-2xl font-black shadow-[6px_6px_0px_var(--theme-border)] active:scale-95 transition-all`}
                       >
                         {comment ? '🔄 再生成する' : '✨ AIに文章作成を任せる'}
                       </button>
 
                       <button
                         onClick={submitSurvey}
-                        className="bg-black text-white p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_#F9C11C] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+                        className="bg-[var(--theme-text)] text-[var(--theme-bg)] p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_var(--theme-primary)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
                       >
                         Google口コミを投稿する
                       </button>
@@ -295,15 +292,15 @@ export default function SurveyPage() {
                   </>
                 ) : (
                   /* --- 【低評価ルート】お詫びと送信のみ --- */
-                  <div className="text-center py-10 bg-white border-4 border-black rounded-[3rem] p-8 shadow-[12px_12px_0px_#000]">
-                    <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-8 border-3 border-black shadow-[8px_8px_0px_#E0E0E0]">✉️</div>
+                  <div className="text-center py-10 bg-[var(--theme-card-bg)] border-4 border-[var(--theme-border)] rounded-[3rem] p-8 shadow-[12px_12px_0px_var(--theme-border)]">
+                    <div className="w-20 h-20 bg-[var(--theme-card-bg)] rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-8 border-3 border-[var(--theme-border)] shadow-[8px_8px_0px_var(--theme-text)] opacity-80">✉️</div>
                     <h2 className="text-2xl font-black italic mb-6">貴重なご意見を<br />ありがとうございます。</h2>
-                    <p className="text-gray-500 font-bold text-sm leading-relaxed mb-10 px-4">
+                    <p className="text-[var(--theme-text)] opacity-70 font-bold text-sm leading-relaxed mb-10 px-4">
                       {appSettings?.lowRatingMessage || "サービスの改善に努めさせていただきます。"}
                     </p>
                     <button
                       onClick={submitSurvey}
-                      className="w-full bg-black text-white p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_#F9C11C] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+                      className="w-full bg-[var(--theme-text)] text-[var(--theme-bg)] p-6 rounded-2xl font-black text-xl shadow-[8px_8px_0px_var(--theme-primary)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
                     >
                       送信して終了
                     </button>

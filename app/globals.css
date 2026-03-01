@@ -6,11 +6,6 @@
   --color-google-blue: #4285F4;
 }
 
-:root {
-  --background: #FFFFFF !important;
-  --foreground: #1A1A1A !important;
-}
-
 /* SaaSの機能美を感じるカード */
 .saas-card {
   background: #FFFFFF;
