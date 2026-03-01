@@ -21,9 +21,7 @@ export async function POST(req: Request) {
         };
 
         let selectedTasteInstruction = "";
-
         if (settings?.aiReviewTaste === "random") {
-            // ランダムの場合は、AIに「適当なテイストを選んで」と指示する
             selectedTasteInstruction = "以下の5つのテイストから、今回の回答内容に最も合うものを1つAIが選び、その口調で作成してください：[親しみやすい, 丁寧, 元気, 感動的, シンプル]";
         } else {
             selectedTasteInstruction = tasteMap[settings?.aiReviewTaste] || tasteMap.friendly;
@@ -55,18 +53,33 @@ ${context}
                 Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-                model: "gpt-4o-mini", // コスパの良いモデル
+                model: "gpt-4o-mini",
                 messages: [{ role: "user", content: prompt }],
-                temperature: 0.7, // ほどよくランダム性を持たせる
+                temperature: 0.7,
             }),
         });
 
         const data = await response.json();
-        const aiText = data.choices[0].message.content;
 
+        // --- 修正ポイント：エラーハンドリングの強化 ---
+        if (!response.ok) {
+            console.error("OpenAI API Error Details:", data);
+            throw new Error(data.error?.message || "OpenAI APIとの通信に失敗しました");
+        }
+
+        if (!data.choices || data.choices.length === 0) {
+            throw new Error("AIからの回答が空でした。");
+        }
+
+        const aiText = data.choices[0].message.content;
         return NextResponse.json({ comment: aiText });
-    } catch (error) {
+
+    } catch (error: any) {
         console.error("AI API Error:", error);
-        return NextResponse.json({ comment: "エラーが発生しました。再度お試しください。" }, { status: 500 });
+        // クライアント側へ具体的なエラー理由を（開発中は特に）返すと原因がすぐわかります
+        return NextResponse.json(
+            { comment: `文章の生成に失敗しました (${error.message})` }, 
+            { status: 500 }
+        );
     }
 }
