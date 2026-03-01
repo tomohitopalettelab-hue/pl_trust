@@ -170,16 +170,38 @@ export default function OwnerDashboard() {
           {/* 右側：ボタンと最新回答 */}
           <div className="lg:col-span-4 space-y-10">
             <div className="grid grid-cols-2 lg:grid-cols-1 gap-6">
+              {/* 1. 集計レポート */}
               <Link href="/reports" className="w-full">
                 <button className="w-full h-full bg-white border-[3px] border-black p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
                   <span className="text-5xl lg:text-3xl">📊</span>
                   <span className="text-xs font-black italic uppercase">集計レポート</span>
                 </button>
               </Link>
+
+              {/* 2. アンケート画面（新設） */}
+              <Link href="/survey" target="_blank" className="w-full">
+                <button className={`w-full h-full ${brandYellow} border-[3px] border-black p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all`}>
+                  <span className="text-5xl lg:text-3xl">📝</span>
+                  <span className="text-xs font-black italic uppercase">アンケート画面</span>
+                </button>
+              </Link>
+
+              {/* 3. Googleマップ */}
               <a href="https://business.google.com/" target="_blank" rel="noopener noreferrer" className="w-full">
                 <button className="w-full h-full bg-white border-[3px] border-black p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
                   <span className="text-5xl lg:text-3xl">🌐</span>
                   <span className="text-xs font-black italic uppercase">Googleマップ</span>
+                </button>
+              </a>
+
+              {/* 4. Palette公式LINE（修正版：アイコンとデザインを最適化） */}
+              <a href="https://lin.ee/HsbRz94" target="_blank" rel="noopener noreferrer" className="w-full">
+                <button className="w-full h-full bg-[#06C755] text-white border-[3px] border-black p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
+                  {/* アイコンをカクカクの💬から、丸みのあるSVGアイコンに変更 */}
+                  <svg className="w-12 h-12 lg:w-8 lg:h-8 fill-white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21.5 9.5c0-4.1-4.3-7.5-9.5-7.5S2.5 5.4 2.5 9.5c0 3.7 3.4 6.8 7.9 7.4.3.1.7.3.8.7l.3 1.8c.1.4.3.5.6.3s1.7-1.1 2.4-2.1c3.1-.4 7-3.6 7-7.6z"/>
+                  </svg>
+                  <span className="text-xs font-black italic uppercase tracking-wider">Palette公式LINE</span>
                 </button>
               </a>
             </div>

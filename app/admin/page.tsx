@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [settings, setSettings] = useState({
     appName: "PAL-TRUST",
     appSubtitle: "SURVEY",
+    themeName: "standard",
     minStarsForGoogle: "4",
     aiReviewLength: "150",
     aiReviewTaste: "friendly",      // 初期値
@@ -147,6 +148,41 @@ export default function AdminDashboard() {
               />
             </div>
           </div>
+        </section>
+
+        {/* デザインテーマ選択 */}
+        <section className="bg-white rounded-[2rem] border-3 border-black p-8 shadow-[8px_8px_0px_#000]">
+          <h2 className="text-xl font-black mb-6 flex items-center gap-2 italic">
+            <span className={`w-2 h-6 ${brandYellow} block border border-black`} />
+            デザインテーマ選択 <span className="text-[10px] text-gray-400 ml-2 font-normal italic">DESIGN THEME</span>
+          </h2>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {[
+              { id: 'standard', name: '標準', color: 'bg-[#F9C11C]', text: 'BLACK' },
+              { id: 'minimal', name: 'シンプル', color: 'bg-white', border: 'border-gray-200', text: 'GRAY' },
+              { id: 'feminine', name: 'フェミニン', color: 'bg-[#FADADD]', text: 'PINK' },
+              { id: 'dark', name: 'ダーク', color: 'bg-[#121212]', border: 'border-[#D4AF37]', text: 'GOLD' },
+              { id: 'pop', name: 'ポップ', color: 'bg-[#3B82F6]', text: 'BLUE' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSettings({ ...settings, themeName: t.id })}
+                className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 ${
+                  settings.themeName === t.id 
+                    ? 'border-black bg-[#F8F8F8] shadow-[4px_4px_0px_#000] scale-105' 
+                    : 'border-transparent bg-white hover:bg-gray-50 opacity-60'
+                }`}
+              >
+                <div className={`w-12 h-12 rounded-full ${t.color} ${t.border || 'border-2 border-black'} shadow-sm`} />
+                <span className="text-[10px] font-black uppercase tracking-tighter text-center">{t.name}</span>
+                {settings.themeName === t.id && (
+                  <span className="text-[10px] text-black font-bold">●選択中</span>
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="mt-4 text-[10px] text-gray-400 font-bold italic text-center">※選択したテーマがアンケート画面の配色・形状に即座に反映されます。</p>
         </section>
 
         {/* 2. アンケート項目設定 */}

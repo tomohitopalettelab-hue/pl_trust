@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { THEMES } from '../components/themes';
 
 export default function SurveyPage() {
   const router = useRouter();
@@ -23,6 +24,11 @@ export default function SurveyPage() {
 
   const brandYellow = "bg-[#F9C11C]";
   const brandYellowText = "text-[#F9C11C]";
+
+  // --- ここを追加 ---
+  // 管理画面の設定(appSettings)にテーマ名があればそれを、なければ standard を使います
+  const theme = THEMES[appSettings?.themeName] || THEMES.standard;
+  // ----------------
 
   // --- DBから設定（アプリ名・質問事項・基準値）を読み込む ---
   useEffect(() => {
@@ -88,18 +94,33 @@ export default function SurveyPage() {
   };
 
   // --- アンケート最終送信（コピー ＆ マップ遷移） ---
+  // --- アンケート最終送信（コピー ＆ マップ遷移） ---
   const submitSurvey = async () => {
     const minStars = Number(appSettings?.minStarsForGoogle || 4);
     const isHighRating = totalRating >= minStars;
 
+    // 保存するコメントを決定するロジック
+    let finalComment = "";
+
+    if (isHighRating) {
+      // 高評価の場合：AIが生成・編集した「comment」を優先
+      finalComment = comment;
+    } else {
+      // 低評価の場合：前のステップ（surveyItems）で入力した「自由回答」を探してセット
+      const freeItem = surveyItems.find(item => item.type === 'free');
+      if (freeItem && answers[freeItem.id]) {
+        finalComment = answers[freeItem.id];
+      }
+    }
+
     const payload = {
       rating: totalRating,
-      comment: comment || answers[surveyItems.find(i => i.type === 'free')?.id] || "",
+      comment: finalComment || "", // 何もなければ空文字
       all_answers: answers
     };
 
     try {
-      // 1. データをDBに保存
+      // 1. データをDBに保存（ここでレポートに追加されます）
       await fetch('/api/surveys-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,18 +129,13 @@ export default function SurveyPage() {
 
       // 2. 高評価ならコピー ＆ マップ遷移
       if (isHighRating) {
-        // AIが生成した文章（comment）があればクリップボードにコピー
         if (comment) {
           try {
             await navigator.clipboard.writeText(comment);
-            // ユーザーにコピーされたことを知らせる（任意。なくてもOKですが親切です）
-            // alert("口コミ文章をコピーしました！マップに貼り付けて投稿してください。");
           } catch (err) {
             console.error('コピーに失敗しました', err);
           }
         }
-
-        // マップURLがあれば別タブで開く
         if (appSettings?.googleMapUrl) {
           window.open(appSettings.googleMapUrl, '_blank');
         }
@@ -168,32 +184,32 @@ export default function SurveyPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black italic tracking-tighter">LOADING...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F4F4F4] text-black font-sans flex flex-col items-center justify-center p-6 overflow-hidden">
+    <div className={`min-h-screen ${theme.bg} text-black font-sans flex flex-col items-center justify-center p-6 overflow-hidden`}>
 
       {step === -1 ? (
         /* --- STEP -1: インパクト抜群のスタート画面 --- */
-        <main className="w-full max-w-md bg-white border-4 border-black rounded-[3rem] p-10 shadow-[12px_12px_0px_#000] flex flex-col items-center text-center space-y-8 animate-in zoom-in-95 duration-500">
-          <div className={`w-24 h-24 ${brandYellow} border-4 border-black rounded-[2rem] flex items-center justify-center text-5xl shadow-[6px_6px_0px_#000] -rotate-3`}>
+        <main className={`w-full max-w-md ${theme.card} p-10 flex flex-col items-center text-center space-y-8 animate-in zoom-in-95 duration-500`}>
+          <div className={`w-24 h-24 ${theme.accentBg} border-4 border-black rounded-[2rem] flex items-center justify-center text-5xl shadow-[6px_6px_0px_#000] -rotate-3`}>
             ✨
           </div>
           <div className="space-y-2">
             <p className="text-xs font-black tracking-[0.3em] uppercase text-gray-400">Feedback System</p>
-            <h1 className="text-5xl font-black italic leading-none tracking-tighter">
-              {appSettings?.appName || "PAL-TRUST"} <br />
-              <span className={brandYellowText}>{appSettings?.appSubtitle || "SURVEY"}</span>
-            </h1>
+           <h1 className={`text-5xl ${theme.text} leading-none tracking-tighter`}>
+  {appSettings?.appName || "PAL-TRUST"} <br />
+  <span className={theme.accentText}>{appSettings?.appSubtitle || "SURVEY"}</span>
+</h1>
           </div>
           <p className="text-sm font-bold text-gray-500 leading-relaxed">
             あなたの声が、お店を創る。 <br />
             わずか1分で終わる簡単なアンケートに <br />
             ご協力をお願いします。
           </p>
-          <button
-            onClick={() => setStep(0)}
-            className={`${brandYellow} w-full border-4 border-black py-6 rounded-2xl font-black text-2xl italic shadow-[8px_8px_0px_#000] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all`}
-          >
-            START!
-          </button>
+         <button
+  onClick={() => setStep(0)}
+  className={`w-full ${theme.button} py-6 text-2xl italic`}
+>
+  START!
+</button>
         </main>
       ) : (
         /* --- アンケート本編 --- */
