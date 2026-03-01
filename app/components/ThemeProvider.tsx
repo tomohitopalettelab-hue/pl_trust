@@ -61,6 +61,7 @@ export const useTheme = () => useContext(ThemeContext);
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeKey, setThemeKey] = useState<string>('standard');
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -79,6 +80,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
         }
       } catch (error) {
         console.error('Failed to fetch theme:', error);
+      } finally {
+        setIsLoaded(true);
       }
     };
     fetchSettings();
@@ -92,6 +95,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
       setThemeKey(key);
     }
   };
+
+  if (!isLoaded) {
+    return <div className="min-h-screen flex items-center justify-center font-black italic text-2xl tracking-widest">LOADING...</div>;
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, changeTheme }}>

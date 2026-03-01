@@ -235,7 +235,7 @@ export default function OwnerDashboard() {
 
       {/* --- Floating Bottom Nav --- */}
       <nav className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-black/90 backdrop-blur-xl rounded-[3rem] h-24 flex justify-around items-center px-10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] z-50 border border-white/10 ring-1 ring-white/5">
-        <Link href="/" className="flex flex-col items-center group">
+        <Link href="/admin" className="flex flex-col items-center group">
           <span className="text-[var(--theme-primary)] text-2xl">●</span>
           <span className="text-[var(--theme-primary)] text-[8px] font-black uppercase italic tracking-widest mt-1">Home</span>
         </Link>
@@ -244,7 +244,7 @@ export default function OwnerDashboard() {
             ＋
           </div>
         </button>
-        <Link href="/admin" className="flex flex-col items-center opacity-30 hover:opacity-100 transition-all group">
+        <Link href="/settings" className="flex flex-col items-center opacity-30 hover:opacity-100 transition-all group">
           <span className="text-white text-2xl italic font-serif group-active:rotate-12 transition-transform">⚙</span>
           <span className="text-white text-[8px] font-black uppercase italic tracking-widest mt-1">Admin</span>
         </Link>

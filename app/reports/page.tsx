@@ -56,7 +56,7 @@ export default function ReportsPage() {
         {/* ヘッダー */}
         <header className="flex justify-between items-center mb-12">
           <div className="animate-in fade-in slide-in-from-left-4 duration-700">
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/admin" className="flex items-center gap-2 group">
               <span className="text-2xl group-hover:-translate-x-1 transition-transform">←</span>
               <h1 className="text-2xl md:text-3xl font-black tracking-tighter italic leading-none uppercase">Analytics</h1>
             </Link>
