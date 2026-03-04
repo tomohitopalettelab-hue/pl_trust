@@ -25,12 +25,12 @@ const THEME_COLORS: Record<string, React.CSSProperties> = {
     '--theme-border': '#000000',        // ボーダー色
   } as React.CSSProperties,
   minimal: {
-    '--theme-primary': '#000000',
+    '--theme-primary': '#64748B',
     '--theme-on-primary': '#FFFFFF',
-    '--theme-bg': '#FFFFFF',
-    '--theme-text': '#4B5563',
-    '--theme-card-bg': '#F9FAFB',
-    '--theme-border': '#E5E7EB',
+    '--theme-bg': '#F8FAFC',
+    '--theme-text': '#334155',
+    '--theme-card-bg': '#FFFFFF',
+    '--theme-border': '#CBD5E1',
   } as React.CSSProperties,
   feminine: {
     '--theme-primary': '#FFB7C5',       // パステルピンク
