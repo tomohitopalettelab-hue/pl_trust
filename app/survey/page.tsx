@@ -2,10 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { THEMES } from '../components/themes';
+import LoadingSpinner from '../components/LoadingSpinner';
+
+const DEFAULT_SURVEY_ITEMS = [
+  { id: 1, text: '接客の満足度はどうでしたか？', type: 'rating' },
+  { id: 2, text: '具体的に良かった点や改善点を教えてください', type: 'free' },
+];
 
 export default function SurveyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
   // --- 以下、元の状態管理のコードに続きます ---
 
 
@@ -16,35 +25,117 @@ export default function SurveyPage() {
   const [comment, setComment] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [surveySessionId, setSurveySessionId] = useState('');
+
+  const customerId = routeCustomerId;
 
   // DBからの設定データ
   const [loading, setLoading] = useState(true);
   const [appSettings, setAppSettings] = useState<any>(null);
-  const [surveyItems, setSurveyItems] = useState<any[]>([]);
+  const [surveyItems, setSurveyItems] = useState<any[]>(DEFAULT_SURVEY_ITEMS);
 
   // --- ここを追加 ---
   // 管理画面の設定(appSettings)にテーマ名があればそれを、なければ standard を使います
   const theme = THEMES[appSettings?.themeName] || THEMES.standard;
+  const displayAppName = appSettings?.appName ?? '...';
+  const subtitle = String(appSettings?.appSubtitle ?? '...');
+  const displayAppSubtitle = subtitle.trim().toUpperCase() === 'SURVEY' ? 'アンケート' : subtitle;
   // ----------------
 
   // --- DBから設定（アプリ名・質問事項・基準値）を読み込む ---
   useEffect(() => {
+    if (!customerId) {
+      setLoading(false);
+      return;
+    }
+
+    const cacheKey = `survey-settings:${customerId}`;
+    let hasCache = false;
+    if (typeof window !== 'undefined') {
+      const cached = window.sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed?.settings) {
+            setAppSettings(parsed.settings);
+          }
+          if (Array.isArray(parsed?.surveyItems) && parsed.surveyItems.length > 0) {
+            setSurveyItems(parsed.surveyItems);
+          } else {
+            setSurveyItems(DEFAULT_SURVEY_ITEMS);
+          }
+          hasCache = true;
+          setLoading(false);
+        } catch {
+          hasCache = false;
+        }
+      }
+    }
+
+    if (!hasCache) {
+      setLoading(true);
+    }
+
+    let isActive = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 8000);
+    const safetyLoadingTimeoutId = setTimeout(() => {
+      if (!isActive) return;
+      setLoading(false);
+    }, 10000);
+
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/settings');
+        const res = await fetch(`/api/settings?customerId=${encodeURIComponent(customerId)}`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          if (!isActive) return;
+          setSurveyItems(DEFAULT_SURVEY_ITEMS);
+          return;
+        }
+
         const data = await res.json();
+        if (!isActive) return;
         if (data) {
           setAppSettings(data.settings);
-          setSurveyItems(data.surveyItems);
+          setSurveyItems(Array.isArray(data.surveyItems) && data.surveyItems.length > 0 ? data.surveyItems : DEFAULT_SURVEY_ITEMS);
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                settings: data.settings || null,
+                surveyItems: Array.isArray(data.surveyItems) ? data.surveyItems : DEFAULT_SURVEY_ITEMS,
+              })
+            );
+          }
         }
       } catch (e) {
-        console.error("設定の取得に失敗しました");
+        if (!isActive) return;
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          setSurveyItems(DEFAULT_SURVEY_ITEMS);
+          return;
+        }
+        setSurveyItems(DEFAULT_SURVEY_ITEMS);
       } finally {
+        if (!isActive) return;
+        clearTimeout(timeoutId);
+        clearTimeout(safetyLoadingTimeoutId);
         setLoading(false);
       }
     }
     fetchSettings();
-  }, []);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      clearTimeout(safetyLoadingTimeoutId);
+      controller.abort();
+    };
+  }, [customerId]);
 
   // --- ハンドラー ---
   const handleNext = (val: any) => {
@@ -113,12 +204,27 @@ export default function SurveyPage() {
     const payload = {
       rating: totalRating,
       comment: finalComment || "", // 何もなければ空文字
-      all_answers: answers
+      all_answers: answers,
+      customerId
     };
 
     try {
+      if (isHighRating && surveySessionId) {
+        try {
+          await fetch('/api/survey-funnel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerId,
+              sessionId: surveySessionId,
+              action: 'review_click',
+            }),
+          });
+        } catch {}
+      }
+
       // 1. データをDBに保存（ここでレポートに追加されます）
-      await fetch('/api/surveys-post', {
+      await fetch('/api/survey', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -139,7 +245,7 @@ export default function SurveyPage() {
       }
 
       // 3. サンクスページへ移動
-      router.push(`/thanks?rating=${totalRating}`);
+      router.push(`/thanks?rating=${totalRating}&customerId=${encodeURIComponent(customerId)}`);
     } catch (e) {
       alert("送信に失敗しました");
     }
@@ -178,7 +284,18 @@ export default function SurveyPage() {
     </div>
   );
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black italic tracking-tighter">LOADING...</div>;
+  if (!customerId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 font-sans text-[var(--theme-text)] bg-[var(--theme-bg)]">
+        <div className="max-w-md w-full bg-[var(--theme-card-bg)] border-[3px] border-[var(--theme-border)] rounded-[2rem] p-8 text-center space-y-4">
+          <h1 className="text-2xl font-black italic">このURLは利用できません</h1>
+          <p className="text-sm font-bold text-[var(--theme-text)]/70">顧客専用のアンケートURL（customerId付き）からアクセスしてください。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className={`min-h-screen ${theme.bg} text-[var(--theme-text)] font-sans flex flex-col items-center justify-center p-6 overflow-hidden`}>
@@ -192,8 +309,8 @@ export default function SurveyPage() {
           <div className="space-y-2">
             <p className="text-xs font-black tracking-[0.3em] uppercase text-gray-400">Feedback System</p>
            <h1 className={`text-5xl ${theme.text} leading-none tracking-tighter`}>
-  {appSettings?.appName || "PAL-TRUST"} <br />
-  <span className={theme.accentText}>{appSettings?.appSubtitle || "SURVEY"}</span>
+  {displayAppName} <br />
+  <span className={theme.accentText}>{displayAppSubtitle}</span>
 </h1>
           </div>
           <p className="text-sm font-bold text-gray-500 leading-relaxed">
@@ -202,7 +319,26 @@ export default function SurveyPage() {
             ご協力をお願いします。
           </p>
          <button
-  onClick={() => setStep(0)}
+  onClick={async () => {
+    const sessionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    setSurveySessionId(sessionId);
+    try {
+      await fetch('/api/survey-funnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          sessionId,
+          action: 'start',
+        }),
+      });
+    } catch {}
+
+    setStep(0);
+  }}
   className={`w-full ${theme.button} py-6 text-2xl italic`}
 >
   START!
@@ -296,7 +432,7 @@ export default function SurveyPage() {
                     <div className="w-20 h-20 bg-[var(--theme-card-bg)] rounded-[2rem] flex items-center justify-center text-4xl mx-auto mb-8 border-3 border-[var(--theme-border)] shadow-[8px_8px_0px_var(--theme-text)] opacity-80">✉️</div>
                     <h2 className="text-2xl font-black italic mb-6">貴重なご意見を<br />ありがとうございます。</h2>
                     <p className="text-[var(--theme-text)] opacity-70 font-bold text-sm leading-relaxed mb-10 px-4">
-                      {appSettings?.lowRatingMessage || "サービスの改善に努めさせていただきます。"}
+                      {appSettings?.lowRatingMessage ?? "..."}
                     </p>
                     <button
                       onClick={submitSurvey}

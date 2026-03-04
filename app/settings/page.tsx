@@ -2,9 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '../components/ThemeProvider';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
+  const [customerId, setCustomerId] = useState('');
   // --- 状態管理の settings 部分 ---
   const [settings, setSettings] = useState({
     appName: "PAL-TRUST",
@@ -27,14 +33,34 @@ export default function AdminDashboard() {
   const [isSaving, setIsSaving] = useState(false);
     const [showToast, setShowToast] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [authChecking, setAuthChecking] = useState(true);
 
   const { changeTheme } = useTheme();
 
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('customerLoggedIn') === 'true';
+    if (!loggedIn) {
+      router.replace('/main/login');
+      return;
+    }
+    if (!routeCustomerId) {
+      router.replace('/main/login');
+      return;
+    }
+    setCustomerId(routeCustomerId);
+    localStorage.setItem('customerId', routeCustomerId);
+    setAuthChecking(false);
+  }, [router, routeCustomerId]);
+
   // --- DBから設定を読み込む ---
   useEffect(() => {
+    if (authChecking) {
+      return;
+    }
+
     async function loadSettings() {
       try {
-        const res = await fetch('/api/settings');
+        const res = await fetch(`/api/settings?customerId=${encodeURIComponent(customerId)}`);
         const data = await res.json();
         if (data && data.settings) {
           setSettings(data.settings);
@@ -47,7 +73,7 @@ export default function AdminDashboard() {
       }
     }
     loadSettings();
-  }, []);
+  }, [authChecking, customerId]);
 
   const addSurveyItem = () => {
     if (surveyItems.length < 20) {
@@ -70,7 +96,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings, surveyItems }),
+        body: JSON.stringify({ customerId, settings, surveyItems }),
       });
       if (res.ok) {
         setShowToast(true);
@@ -86,7 +112,11 @@ export default function AdminDashboard() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center font-black italic text-2xl">LOADING...</div>;
+    return <LoadingSpinner />;
+  }
+
+  if (authChecking) {
+    return <LoadingSpinner />;
   }
 
   return (
@@ -327,7 +357,7 @@ export default function AdminDashboard() {
 
         {/* 下部ボタン */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 pb-20">
-          <Link href="/admin" className="w-full md:w-auto order-2 md:order-1">
+          <Link href={`/main?customerId=${encodeURIComponent(customerId)}`} className="w-full md:w-auto order-2 md:order-1">
             <button className="w-full md:w-auto bg-[var(--theme-card-bg)] border-3 border-[var(--theme-border)] px-12 py-6 rounded-[2rem] font-black text-xl shadow-[8px_8px_0px_var(--theme-border)] active:scale-95 transition-all">← 戻る</button>
           </Link>
           <button

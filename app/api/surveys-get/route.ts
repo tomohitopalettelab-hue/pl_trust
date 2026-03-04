@@ -1,9 +1,15 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { rows } = await sql`SELECT * FROM surveys ORDER BY created_at DESC;`;
+    const { searchParams } = new URL(request.url);
+    const customerId = searchParams.get('customerId');
+
+    const { rows } = customerId
+      ? await sql`SELECT * FROM surveys WHERE category = ${customerId} ORDER BY created_at DESC;`
+      : await sql`SELECT * FROM surveys ORDER BY created_at DESC;`;
+
     return NextResponse.json(rows);
   } catch (error) {
     console.error('DB取得エラー:', error);

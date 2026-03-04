@@ -2,16 +2,18 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function ThanksContent() {
   const searchParams = useSearchParams();
   const rating = Number(searchParams.get('rating') || 0);
+  const customerId = searchParams.get('customerId') || searchParams.get('customer') || 'default';
   const [appSettings, setAppSettings] = useState<any>(null);
 
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/settings');
+        const res = await fetch(`/api/settings?customerId=${encodeURIComponent(customerId)}`);
         const data = await res.json();
         if (data) setAppSettings(data.settings);
       } catch (e) {
@@ -19,7 +21,7 @@ function ThanksContent() {
       }
     }
     fetchSettings();
-  }, []);
+  }, [customerId]);
 
   const brandYellow = "bg-[#F9C11C]";
   const isHighRating = rating >= Number(appSettings?.minStarsForGoogle || 4);
@@ -44,8 +46,8 @@ function ThanksContent() {
 
       <p className="text-sm font-bold text-gray-600 leading-relaxed italic">
         {isHighRating 
-          ? (appSettings?.thanksMessageHigh || "温かいご声援ありがとうございます！またのお越しをスタッフ一同お待ちしております。")
-          : (appSettings?.thanksMessageLow || "貴重なご意見ありがとうございました。今後のサービス向上に役立ててまいります。")
+          ? (appSettings?.thanksPageContent ?? "...")
+          : (appSettings?.lowRatingMessage ?? "...")
         }
       </p>
 
@@ -57,7 +59,7 @@ function ThanksContent() {
 export default function ThanksPage() {
   return (
     <div className="min-h-screen bg-[#F4F4F4] text-black font-sans flex flex-col items-center justify-center p-6">
-      <Suspense fallback={<div className="font-black italic">LOADING...</div>}>
+      <Suspense fallback={<LoadingSpinner />}>
         <ThanksContent />
       </Suspense>
       

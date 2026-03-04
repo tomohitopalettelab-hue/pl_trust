@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { THEMES } from './themes';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 type ThemeContextType = {
   theme: typeof THEMES.standard;
@@ -59,46 +60,100 @@ const THEME_COLORS: Record<string, React.CSSProperties> = {
 
 export const useTheme = () => useContext(ThemeContext);
 
+function getCustomerIdFromParams(params: URLSearchParams) {
+  return params.get('customerId') || params.get('customer') || '';
+}
+
+function getStoredThemeKey(customerId: string) {
+  if (typeof window === 'undefined') {
+    return 'standard';
+  }
+  const scopedKey = customerId ? window.localStorage.getItem(`themeKey:${customerId}`) : null;
+  const defaultKey = window.localStorage.getItem('themeKey:default');
+  const candidate = scopedKey || defaultKey || 'standard';
+  return THEMES[candidate] ? candidate : 'standard';
+}
+
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [themeKey, setThemeKey] = useState<string>('standard');
-  const [isLoaded, setIsLoaded] = useState(false);
+  const lastManualChangeRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const customerId = getCustomerIdFromParams(searchParams);
+    const cachedThemeKey = getStoredThemeKey(customerId);
+    if (THEMES[cachedThemeKey]) {
+      setThemeKey(cachedThemeKey);
+    }
+  }, [pathname, searchParams]);
 
   useEffect(() => {
+    let isActive = true;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000);
+
+    const currentManualVersion = lastManualChangeRef.current;
+    const customerId = getCustomerIdFromParams(searchParams);
+    const url = customerId
+      ? `/api/settings?customerId=${encodeURIComponent(customerId)}`
+      : '/api/settings';
+
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/settings');
+        const res = await fetch(url, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
-          console.log('Theme Settings Loaded:', data); // デバッグ用ログ
           // 設定データは { settings: { themeName: '...' } } の形式
           const settings = data?.settings;
-          if (settings?.themeName && THEMES[settings.themeName]) {
+          if (
+            isActive &&
+            currentManualVersion === lastManualChangeRef.current &&
+            settings?.themeName &&
+            THEMES[settings.themeName]
+          ) {
             setThemeKey(settings.themeName);
-          } else {
-            console.warn('Invalid theme key:', settings?.themeName);
+            if (customerId) {
+              window.localStorage.setItem(`themeKey:${customerId}`, settings.themeName);
+            } else {
+              window.localStorage.setItem('themeKey:default', settings.themeName);
+            }
           }
         }
       } catch (error) {
-        console.error('Failed to fetch theme:', error);
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
       } finally {
-        setIsLoaded(true);
+        clearTimeout(timeoutId);
       }
     };
     fetchSettings();
-  }, []);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [pathname, searchParams]);
 
   const theme = THEMES[themeKey] || THEMES.standard;
   const themeStyles = THEME_COLORS[themeKey] || THEME_COLORS.standard;
 
   const changeTheme = (key: string) => {
     if (THEMES[key]) {
+      lastManualChangeRef.current += 1;
       setThemeKey(key);
+      const customerId = getCustomerIdFromParams(searchParams);
+      if (customerId) {
+        window.localStorage.setItem(`themeKey:${customerId}`, key);
+      } else {
+        window.localStorage.setItem('themeKey:default', key);
+      }
     }
   };
-
-  if (!isLoaded) {
-    return <div className="min-h-screen flex items-center justify-center font-black italic text-2xl tracking-widest">LOADING...</div>;
-  }
 
   return (
     <ThemeContext.Provider value={{ theme, changeTheme }}>

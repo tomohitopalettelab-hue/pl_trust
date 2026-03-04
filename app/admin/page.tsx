@@ -2,8 +2,15 @@
 
 import React, { useState, useEffect } from 'react'; // useEffectを追加
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function OwnerDashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
+  const [customerId, setCustomerId] = useState('');
+  const [authChecking, setAuthChecking] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   
   // --- DB連動の状態管理 ---
@@ -15,14 +22,44 @@ export default function OwnerDashboard() {
     starsDistribution: [0, 0, 0, 0, 0] // 星5〜1の割合
   });
   const [latestFeedback, setLatestFeedback] = useState<any>(null);
+  const [latestFeedbackQa, setLatestFeedbackQa] = useState<{ question: string; answer: string } | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loggedIn = localStorage.getItem('customerLoggedIn') === 'true';
+    if (!loggedIn) {
+      router.replace('/main/login');
+      return;
+    }
+    if (!routeCustomerId) {
+      router.replace('/main/login');
+      return;
+    }
+
+    setCustomerId(routeCustomerId);
+    localStorage.setItem('customerId', routeCustomerId);
+    setAuthChecking(false);
+  }, [router, routeCustomerId]);
 
   // --- データ取得ロジック ---
   useEffect(() => {
+    if (authChecking) {
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/surveys-get');
+        const [response, settingsResponse] = await Promise.all([
+          fetch(`/api/surveys-get?customerId=${encodeURIComponent(customerId)}`),
+          fetch(`/api/settings?customerId=${encodeURIComponent(customerId)}`),
+        ]);
         const data = await response.json();
+        const settingsData = await settingsResponse.json();
+        const configuredItems = Array.isArray(settingsData?.surveyItems) ? settingsData.surveyItems : [];
+        const questionById = new Map<string, { text: string; type: string }>();
+        configuredItems.forEach((item: any) => {
+          questionById.set(String(item.id), { text: String(item.text || `質問 ${item.id}`), type: String(item.type || 'free') });
+        });
         
         if (Array.isArray(data) && data.length > 0) {
           const total = data.length;
@@ -51,6 +88,34 @@ export default function OwnerDashboard() {
           // 最新のコメントがある回答を1件取得
           const latest = data.find(r => r.comment) || data[0];
           setLatestFeedback(latest);
+
+          const answers = latest?.all_answers && typeof latest.all_answers === 'object' ? latest.all_answers : {};
+          const qaPairs = Object.entries(answers)
+            .map(([key, value]) => {
+              const meta = questionById.get(String(key));
+              const question = meta?.text || `質問 ${key}`;
+              const answerRaw = String(value ?? '').trim();
+              if (!answerRaw) return null;
+
+              if (meta?.type === 'rating' && !Number.isNaN(Number(answerRaw))) {
+                const rating = Math.max(0, Math.min(5, Number(answerRaw)));
+                const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                return { question, answer: `${stars} (${rating}/5)` };
+              }
+
+              return { question, answer: answerRaw };
+            })
+            .filter((item): item is { question: string; answer: string } => Boolean(item));
+
+          if (qaPairs.length > 0) {
+            const randomIndex = Math.floor(Math.random() * qaPairs.length);
+            setLatestFeedbackQa(qaPairs[randomIndex]);
+          } else {
+            setLatestFeedbackQa(null);
+          }
+        } else {
+          setLatestFeedback(null);
+          setLatestFeedbackQa(null);
         }
       } catch (error) {
         console.error("データ取得失敗:", error);
@@ -59,13 +124,17 @@ export default function OwnerDashboard() {
       }
     };
     fetchData();
-  }, []);
+  }, [customerId, authChecking]);
 
   const copyToClipboard = () => {
-    const surveyUrl = window.location.origin + "/survey";
+    const surveyUrl = `${window.location.origin}/survey?customerId=${encodeURIComponent(customerId)}`;
     navigator.clipboard.writeText(surveyUrl);
     alert("お客様用アンケートURLをコピーしました！");
   };
+
+  if (authChecking || loading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="min-h-screen font-sans selection:bg-[var(--theme-primary)] text-[var(--theme-text)]">
@@ -116,6 +185,7 @@ export default function OwnerDashboard() {
           <div className="animate-in fade-in slide-in-from-left-4 duration-700">
             <h1 className="text-3xl md:text-5xl font-black tracking-tighter italic leading-none">PAL-TRUST</h1>
             <p className="text-[10px] md:text-xs font-black text-[var(--theme-primary)] uppercase tracking-widest mt-2 italic">Owner Dashboard</p>
+            <p className="text-[10px] font-black text-[var(--theme-text)]/40 uppercase tracking-widest mt-1">Customer: {customerId}</p>
           </div>
           <div className="text-right hidden sm:block">
              <p className="text-[10px] font-black text-[var(--theme-text)] opacity-40 italic uppercase">#001 Admin Mode</p>
@@ -168,7 +238,7 @@ export default function OwnerDashboard() {
           <div className="lg:col-span-4 space-y-10">
             <div className="grid grid-cols-2 lg:grid-cols-1 gap-6">
               {/* 1. 集計レポート */}
-              <Link href="/reports" className="w-full">
+              <Link href={`/main/reports?customerId=${encodeURIComponent(customerId)}`} className="w-full">
                 <button className="w-full h-full bg-[var(--theme-card-bg)] text-[var(--theme-text)] border-[3px] border-[var(--theme-border)] p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_var(--theme-border)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all">
                   <span className="text-5xl lg:text-3xl">📊</span>
                   <span className="text-xs font-black italic uppercase">集計レポート</span>
@@ -176,7 +246,7 @@ export default function OwnerDashboard() {
               </Link>
 
               {/* 2. アンケート画面（新設） */}
-              <Link href="/survey" target="_blank" className="w-full">
+              <Link href={`/survey?customerId=${encodeURIComponent(customerId)}`} target="_blank" className="w-full">
                 <button className={`w-full h-full bg-[var(--theme-primary)] text-[var(--theme-on-primary)] border-[3px] border-[var(--theme-border)] p-8 rounded-[3rem] flex flex-col lg:flex-row items-center justify-center gap-4 shadow-[8px_8px_0px_var(--theme-border)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all`}>
                   <span className="text-5xl lg:text-3xl">📝</span>
                   <span className="text-xs font-black italic uppercase">アンケート画面</span>
@@ -211,9 +281,22 @@ export default function OwnerDashboard() {
               <div className="bg-[var(--theme-card-bg)] rounded-[3.5rem] border-[3px] border-[var(--theme-border)] p-10 shadow-[10px_10px_0px_var(--theme-border)]">
                 {latestFeedback ? (
                   <>
-                    <p className="text-sm font-black text-[var(--theme-text)] opacity-70 mb-8 leading-relaxed italic">
-                      「{latestFeedback.comment || "（コメントなし）"}」
-                    </p>
+                    {latestFeedbackQa ? (
+                      <div className="space-y-4 mb-8">
+                        <div>
+                          <p className="text-[10px] font-black text-[var(--theme-text)]/60 uppercase tracking-widest">Question</p>
+                          <p className="text-sm font-black text-[var(--theme-text)] opacity-80 leading-relaxed">{latestFeedbackQa.question}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-[var(--theme-text)]/60 uppercase tracking-widest">Answer</p>
+                          <p className="text-sm font-black text-[var(--theme-text)] opacity-80 leading-relaxed italic">{latestFeedbackQa.answer}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm font-black text-[var(--theme-text)] opacity-70 mb-8 leading-relaxed italic">
+                        「{latestFeedback.comment || "（回答データなし）"}」
+                      </p>
+                    )}
                     <div className="flex justify-between items-center pt-8 border-t border-gray-100">
                        <div className="flex gap-1.5 text-xl">
                          {[...Array(5)].map((_, i) => (
@@ -234,7 +317,7 @@ export default function OwnerDashboard() {
       </div>
 
       {/* --- Floating Bottom Nav --- */}
-      <nav className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-black/90 backdrop-blur-xl rounded-[3rem] h-24 flex justify-around items-center px-10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] z-50 border border-white/10 ring-1 ring-white/5">
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-black/75 backdrop-blur-xl rounded-[3rem] h-24 flex justify-around items-center px-10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] z-50 border border-white/10 ring-1 ring-white/5">
         <Link href="/" className="flex flex-col items-center group">
           <span className="text-[var(--theme-primary)] text-2xl">●</span>
           <span className="text-[var(--theme-primary)] text-[8px] font-black uppercase italic tracking-widest mt-1">Home</span>
@@ -244,9 +327,9 @@ export default function OwnerDashboard() {
             ＋
           </div>
         </button>
-        <Link href="/settings" className="flex flex-col items-center opacity-30 hover:opacity-100 transition-all group">
+        <Link href={`/main/settings?customerId=${encodeURIComponent(customerId)}`} className="flex flex-col items-center opacity-30 hover:opacity-100 transition-all group">
           <span className="text-white text-2xl italic font-serif group-active:rotate-12 transition-transform">⚙</span>
-          <span className="text-white text-[8px] font-black uppercase italic tracking-widest mt-1">Admin</span>
+          <span className="text-white text-[8px] font-black uppercase italic tracking-widest mt-1">Setting</span>
         </Link>
       </nav>
 
