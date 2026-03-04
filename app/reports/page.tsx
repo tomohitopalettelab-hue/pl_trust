@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import LoadingSpinner from '../components/LoadingSpinner';
+
+export const dynamic = 'force-dynamic';
 
 type SurveyItem = {
   id: number;
@@ -23,7 +25,7 @@ type SurveyReview = {
 type SortBy = 'dateDesc' | 'dateAsc' | 'ratingDesc' | 'ratingAsc' | 'answersDesc';
 type RatingFilter = 'all' | '1' | '2' | '3' | '4' | '5';
 
-export default function ReportsPage() {
+function ReportsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
@@ -447,5 +449,13 @@ export default function ReportsPage() {
         </Link>
       </nav>
     </div>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <ReportsPageContent />
+    </Suspense>
   );
 }

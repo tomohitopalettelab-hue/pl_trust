@@ -47,7 +47,10 @@ export async function POST(req: Request) {
         if (settings?.aiReviewTaste === "random") {
             selectedTasteInstruction = "以下の5つのテイストから、今回の回答内容に最も合うものを1つAIが選び、その口調で作成してください：[親しみやすい, 丁寧, 元気, 感動的, シンプル]";
         } else {
-            selectedTasteInstruction = tasteMap[settings?.aiReviewTaste] || tasteMap.friendly;
+            const selectedTasteKey = settings?.aiReviewTaste;
+            selectedTasteInstruction = selectedTasteKey && selectedTasteKey in tasteMap
+                ? tasteMap[selectedTasteKey]
+                : tasteMap.friendly;
         }
 
         // --- 3. AIへの命令書（プロンプト） ---

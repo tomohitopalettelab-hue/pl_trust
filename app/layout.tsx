@@ -1,4 +1,5 @@
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import ThemeProvider from "./components/ThemeProvider";
 
@@ -12,9 +13,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <Suspense fallback={<div className="min-h-screen w-full">{children}</div>}>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </Suspense>
       </body>
     </html>
   );

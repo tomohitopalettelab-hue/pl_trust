@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { THEMES } from '../components/themes';
 import LoadingSpinner from '../components/LoadingSpinner';
 import NoticeToast from '../components/NoticeToast';
 import { useNotice } from '../components/useNotice';
+
+export const dynamic = 'force-dynamic';
 
 const DEFAULT_SURVEY_ITEMS = [
   { id: 1, text: '接客の満足度はどうでしたか？', type: 'rating' },
@@ -56,7 +58,7 @@ const normalizeSurveyItems = (items: unknown): SurveyItem[] => {
   return normalized.length > 0 ? normalized : DEFAULT_SURVEY_ITEMS;
 };
 
-export default function SurveyPage() {
+function SurveyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
@@ -576,5 +578,13 @@ export default function SurveyPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SurveyPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <SurveyPageContent />
+    </Suspense>
   );
 }

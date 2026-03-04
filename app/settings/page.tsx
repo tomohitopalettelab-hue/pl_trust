@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '../components/ThemeProvider';
 import LoadingSpinner from '../components/LoadingSpinner';
 import NoticeToast from '../components/NoticeToast';
 import { useNotice } from '../components/useNotice';
+
+export const dynamic = 'force-dynamic';
 
 type SurveyItem = {
   id: number;
@@ -44,7 +46,7 @@ const normalizeSurveyItems = (items: unknown): SurveyItem[] => {
   return normalized.length > 0 ? normalized : DEFAULT_SURVEY_ITEMS;
 };
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
@@ -591,5 +593,13 @@ export default function AdminDashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

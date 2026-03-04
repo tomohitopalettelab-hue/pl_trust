@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react'; // useEffectを追加
+import React, { Suspense, useState, useEffect, useRef } from 'react'; // useEffectを追加
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import LoadingSpinner from '../components/LoadingSpinner';
 import NoticeToast from '../components/NoticeToast';
 import { useNotice } from '../components/useNotice';
+
+export const dynamic = 'force-dynamic';
 
 type SurveyRecord = {
   rating: number;
@@ -21,7 +23,7 @@ type SettingsSurveyItem = {
   type?: string;
 };
 
-export default function OwnerDashboard() {
+function OwnerDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeCustomerId = searchParams.get('customerId') || searchParams.get('customer') || '';
@@ -516,5 +518,13 @@ export default function OwnerDashboard() {
       </nav>
 
     </div>
+  );
+}
+
+export default function OwnerDashboard() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <OwnerDashboardContent />
+    </Suspense>
   );
 }
