@@ -239,18 +239,18 @@ export default function PlatformAdminPage() {
         <header>
           <p className="text-xs font-black uppercase tracking-widest text-[var(--theme-text)]/50">Platform Admin</p>
           <h1 className="text-3xl md:text-4xl font-black italic tracking-tight">顧客別データ管理</h1>
-          <p className="text-sm font-bold text-[var(--theme-text)]/60 mt-2">顧客を選択すると、対象顧客の回答データを確認できます。</p>
+          <p className="text-sm font-bold text-[var(--theme-text)]/60 mt-2">pal_db連携: Pal Trust契約中の顧客のみ表示されます。</p>
         </header>
 
         <section className="bg-[var(--theme-card-bg)] border-[3px] border-[var(--theme-border)] rounded-[2rem] p-6 shadow-[8px_8px_0px_var(--theme-border)]">
-          <h2 className="text-xl font-black italic mb-4">顧客ID / パスワード管理</h2>
+          <h2 className="text-xl font-black italic mb-4">顧客ID / パスワード管理（pal_db同期）</h2>
 
           <form onSubmit={handleSaveAccount} className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input
               type="text"
               value={newCustomerId}
               onChange={(e) => setNewCustomerId(e.target.value)}
-              placeholder="顧客ID（空欄で自動生成）"
+              placeholder="顧客ID（Pal Trust契約中のID）"
               className="bg-[var(--theme-bg)] border-2 border-[var(--theme-border)] rounded-xl px-4 py-3 font-black outline-none"
             />
             <input
@@ -272,7 +272,7 @@ export default function PlatformAdminPage() {
               disabled={savingAccount}
               className="bg-[var(--theme-primary)] text-[var(--theme-on-primary)] border-2 border-[var(--theme-border)] rounded-xl px-4 py-3 font-black disabled:opacity-60"
             >
-              {savingAccount ? 'SAVING...' : 'ID/PWを保存'}
+              {savingAccount ? 'SAVING...' : 'ID/PWをpal_dbへ保存'}
             </button>
           </form>
 

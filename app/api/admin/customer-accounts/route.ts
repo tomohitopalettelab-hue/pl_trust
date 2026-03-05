@@ -1,12 +1,12 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
-import { hashPassword } from '@/lib/password';
+import { listTrustAccountsFromPalDb, findTrustAccountByPaletteId } from '@/app/api/_lib/pal-trust-accounts';
+import { palDbPost } from '@/app/api/_lib/pal-db-client';
 
 type AccountRow = {
   customer_id: string;
   customer_name: string | null;
   main_page_path: string | null;
-  is_active: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -30,24 +30,13 @@ const DEFAULT_SETTINGS = {
   ],
 };
 
-function generateCustomerId(customerName?: string) {
-  const base = (customerName || 'customer')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 24) || 'customer';
-
-  const suffix = Math.random().toString(36).slice(2, 6);
-  return `${base}-${suffix}`;
-}
-
 async function ensureTable() {
   await sql`
     CREATE TABLE IF NOT EXISTS customer_accounts (
       customer_id TEXT PRIMARY KEY,
       customer_name TEXT,
       main_page_path TEXT,
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -61,11 +50,6 @@ async function ensureTable() {
   await sql`
     ALTER TABLE customer_accounts
     ADD COLUMN IF NOT EXISTS main_page_path TEXT;
-  `;
-
-  await sql`
-    ALTER TABLE customer_accounts
-    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
   `;
 
   await sql`
@@ -88,20 +72,15 @@ async function ensureTable() {
 
 export async function GET() {
   try {
-    await ensureTable();
-    const { rows } = await sql<AccountRow>`
-      SELECT customer_id, customer_name, main_page_path, is_active, created_at::text, updated_at::text
-      FROM customer_accounts
-      ORDER BY updated_at DESC;
-    `;
-
-    return NextResponse.json(rows.map((row) => ({
-      customerId: row.customer_id,
-      customerName: row.customer_name || '',
-      mainPagePath: row.main_page_path || `/main?customerId=${encodeURIComponent(row.customer_id)}`,
-      isActive: row.is_active !== false,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+    const trustAccounts = await listTrustAccountsFromPalDb();
+    return NextResponse.json(trustAccounts.map((account) => ({
+      customerId: account.paletteId,
+      customerName: account.name || '',
+      mainPagePath: `/main?customerId=${encodeURIComponent(account.paletteId)}`,
+      isActive: String(account.status || '').toLowerCase() === 'active',
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+      hasPassword: Boolean(account.chatPasswordSet),
     })));
   } catch (error) {
     console.error('customer accounts get error:', error);
@@ -112,42 +91,48 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { customerId, customerName, password } = await request.json();
+    const targetCustomerId = String(customerId || '').trim().toUpperCase();
 
-    if (!password) {
-      return NextResponse.json({ error: 'パスワードは必須です' }, { status: 400 });
+    if (!targetCustomerId || !password) {
+      return NextResponse.json({ error: '顧客IDとパスワードは必須です' }, { status: 400 });
     }
 
+    const trustAccount = await findTrustAccountByPaletteId(targetCustomerId);
+    if (!trustAccount) {
+      return NextResponse.json({ error: 'Pal Trust契約中の顧客IDのみ設定できます' }, { status: 404 });
+    }
+
+    const resolvedCustomerName = String(customerName || trustAccount.name || '').trim();
     await ensureTable();
-
-    const resolvedCustomerId = String(customerId || '').trim() || generateCustomerId(String(customerName || ''));
-    const mainPagePath = `/main?customerId=${encodeURIComponent(resolvedCustomerId)}`;
-
-    const passwordHash = hashPassword(String(password));
-
-    await sql`
-      INSERT INTO customer_accounts (customer_id, customer_name, password_hash, updated_at)
-      VALUES (${resolvedCustomerId}, ${String(customerName || '')}, ${passwordHash}, NOW())
-      ON CONFLICT (customer_id)
-      DO UPDATE SET
-        customer_name = ${String(customerName || '')},
-        password_hash = ${passwordHash},
-        main_page_path = ${mainPagePath},
-        updated_at = NOW();
-    `;
-
-    await sql`
-      UPDATE customer_accounts
-      SET main_page_path = ${mainPagePath}
-      WHERE customer_id = ${resolvedCustomerId} AND (main_page_path IS NULL OR main_page_path = '');
-    `;
 
     await sql`
       INSERT INTO customer_app_settings (customer_id, data, updated_at)
-      VALUES (${resolvedCustomerId}, ${JSON.stringify(DEFAULT_SETTINGS)}, NOW())
+      VALUES (${targetCustomerId}, ${JSON.stringify(DEFAULT_SETTINGS)}, NOW())
       ON CONFLICT (customer_id) DO NOTHING;
     `;
 
-    return NextResponse.json({ ok: true, customerId: resolvedCustomerId, mainPagePath });
+    await sql`
+      INSERT INTO customer_accounts (customer_id, customer_name, main_page_path, updated_at)
+      VALUES (${targetCustomerId}, ${resolvedCustomerName}, ${`/main?customerId=${encodeURIComponent(targetCustomerId)}`}, NOW())
+      ON CONFLICT (customer_id)
+      DO UPDATE SET customer_name = EXCLUDED.customer_name, main_page_path = EXCLUDED.main_page_path, updated_at = NOW();
+    `;
+
+    const saveRes = await palDbPost('/api/accounts', {
+      id: trustAccount.id,
+      paletteId: trustAccount.paletteId,
+      name: resolvedCustomerName || trustAccount.name || '顧客名未設定',
+      status: trustAccount.status || 'active',
+      chatLoginId: targetCustomerId,
+      chatPassword: String(password),
+    });
+
+    if (!saveRes.ok) {
+      const body = await saveRes.json().catch(() => ({}));
+      return NextResponse.json({ error: body?.error || 'pal_dbへの保存に失敗しました' }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, customerId: targetCustomerId, mainPagePath: `/main?customerId=${encodeURIComponent(targetCustomerId)}` });
   } catch (error) {
     console.error('customer accounts post error:', error);
     return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 });
@@ -157,20 +142,30 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const customerId = String(body?.customerId || '').trim();
+    const customerId = String(body?.customerId || '').trim().toUpperCase();
     const isActive = body?.isActive;
 
     if (!customerId || typeof isActive !== 'boolean') {
       return NextResponse.json({ error: 'customerIdとisActiveは必須です' }, { status: 400 });
     }
 
-    await ensureTable();
+    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    if (!trustAccount) {
+      return NextResponse.json({ error: 'Pal Trust契約中の顧客が見つかりません' }, { status: 404 });
+    }
 
-    await sql`
-      UPDATE customer_accounts
-      SET is_active = ${isActive}, updated_at = NOW()
-      WHERE customer_id = ${customerId};
-    `;
+    const saveRes = await palDbPost('/api/accounts', {
+      id: trustAccount.id,
+      paletteId: trustAccount.paletteId,
+      name: trustAccount.name || '顧客名未設定',
+      status: isActive ? 'active' : 'inactive',
+      chatLoginId: trustAccount.chatLoginId || trustAccount.paletteId,
+    });
+
+    if (!saveRes.ok) {
+      const saveBody = await saveRes.json().catch(() => ({}));
+      return NextResponse.json({ error: saveBody?.error || 'pal_dbへの状態更新に失敗しました' }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -188,14 +183,28 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'customerIdは必須です' }, { status: 400 });
     }
 
+    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    if (!trustAccount) {
+      return NextResponse.json({ error: 'Pal Trust契約中の顧客が見つかりません' }, { status: 404 });
+    }
+
+    const saveRes = await palDbPost('/api/accounts', {
+      id: trustAccount.id,
+      paletteId: trustAccount.paletteId,
+      name: trustAccount.name || '顧客名未設定',
+      status: 'inactive',
+      chatLoginId: trustAccount.chatLoginId || trustAccount.paletteId,
+    });
+
+    if (!saveRes.ok) {
+      const saveBody = await saveRes.json().catch(() => ({}));
+      return NextResponse.json({ error: saveBody?.error || 'pal_dbへの停止反映に失敗しました' }, { status: 500 });
+    }
+
     await ensureTable();
-
-    await sql`DELETE FROM customer_accounts WHERE customer_id = ${customerId};`;
     await sql`DELETE FROM customer_app_settings WHERE customer_id = ${customerId};`;
-    await sql`DELETE FROM surveys WHERE COALESCE(NULLIF(category, ''), 'default') = ${customerId};`;
-    await sql`DELETE FROM survey_funnel_events WHERE customer_id = ${customerId};`;
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, message: '顧客を停止し、Pal Trust側設定を削除しました' });
   } catch (error) {
     console.error('customer accounts delete error:', error);
     return NextResponse.json({ error: '削除に失敗しました' }, { status: 500 });
