@@ -1,6 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
-import { listTrustAccountsFromPalDb, findTrustAccountByPaletteId } from '@/app/api/_lib/pal-trust-accounts';
+import { listTrustAccountsFromPalDb, findTrustAccountByCustomerId } from '@/app/api/_lib/pal-trust-accounts';
 import { palDbPost } from '@/app/api/_lib/pal-db-client';
 
 type AccountRow = {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '顧客IDとパスワードは必須です' }, { status: 400 });
     }
 
-    const trustAccount = await findTrustAccountByPaletteId(targetCustomerId);
+    const trustAccount = await findTrustAccountByCustomerId(targetCustomerId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約中の顧客IDのみ設定できます' }, { status: 404 });
     }
@@ -149,7 +149,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'customerIdとisActiveは必須です' }, { status: 400 });
     }
 
-    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    const trustAccount = await findTrustAccountByCustomerId(customerId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約中の顧客が見つかりません' }, { status: 404 });
     }
@@ -183,7 +183,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'customerIdは必須です' }, { status: 400 });
     }
 
-    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    const trustAccount = await findTrustAccountByCustomerId(customerId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約中の顧客が見つかりません' }, { status: 404 });
     }

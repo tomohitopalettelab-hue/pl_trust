@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 import { palDbPost } from '@/app/api/_lib/pal-db-client';
-import { findTrustAccountByPaletteId } from '@/app/api/_lib/pal-trust-accounts';
+import { findTrustAccountByCustomerId } from '@/app/api/_lib/pal-trust-accounts';
 
 const DEFAULT_SETTINGS = {
   settings: {
@@ -86,7 +86,7 @@ async function syncTrustCustomerProfile(customerId: string, customerName: string
 export async function POST(request: Request) {
   try {
     const { customerId, password } = await request.json();
-    const loginId = String(customerId || '').trim().toUpperCase();
+    const loginId = String(customerId || '').normalize('NFKC').trim().toUpperCase();
     const loginPassword = String(password || '');
 
     if (!loginId || !loginPassword) {
@@ -103,8 +103,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'IDまたはパスワードが正しくありません' }, { status: 401 });
     }
 
-    const paletteId = String(verifyData?.paletteId || loginId).trim().toUpperCase();
-    const trustAccount = await findTrustAccountByPaletteId(paletteId);
+    const paletteId = String(verifyData?.paletteId || loginId).normalize('NFKC').trim().toUpperCase();
+    const trustAccount = await findTrustAccountByCustomerId(paletteId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約が有効な顧客のみログインできます' }, { status: 403 });
     }

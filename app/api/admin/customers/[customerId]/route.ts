@@ -1,12 +1,13 @@
 import { sql } from '@vercel/postgres';
 import { NextResponse } from 'next/server';
-import { findTrustAccountByPaletteId } from '@/app/api/_lib/pal-trust-accounts';
+import { findTrustAccountByCustomerId } from '@/app/api/_lib/pal-trust-accounts';
 import { palDbPost } from '@/app/api/_lib/pal-db-client';
 
 type AccountRow = {
   customer_id: string;
   customer_name: string | null;
   main_page_path: string | null;
+  is_active: boolean | null;
   updated_at: string | null;
 };
 
@@ -48,6 +49,11 @@ async function ensureTables() {
   `;
 
   await sql`
+    ALTER TABLE customer_accounts
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS customer_app_settings (
       customer_id TEXT PRIMARY KEY,
       data JSONB NOT NULL,
@@ -70,28 +76,43 @@ export async function GET(
       return NextResponse.json({ error: 'customerIdは必須です' }, { status: 400 });
     }
 
-    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    const trustAccount = await findTrustAccountByCustomerId(customerId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約顧客が見つかりません' }, { status: 404 });
     }
 
+    const canonicalCustomerId = String(trustAccount.paletteId || '').trim().toUpperCase();
+    const canonicalCustomerName = String(trustAccount.name || '').trim();
+    const canonicalIsActive = String(trustAccount.status || '').toLowerCase() === 'active';
+
+    await sql`
+      INSERT INTO customer_accounts (customer_id, customer_name, main_page_path, password_hash, is_active, updated_at)
+      VALUES (${canonicalCustomerId}, ${canonicalCustomerName}, ${`/main?customerId=${encodeURIComponent(canonicalCustomerId)}`}, ${''}, ${canonicalIsActive}, NOW())
+      ON CONFLICT (customer_id)
+      DO UPDATE SET
+        customer_name = COALESCE(NULLIF(EXCLUDED.customer_name, ''), customer_accounts.customer_name),
+        main_page_path = EXCLUDED.main_page_path,
+        is_active = EXCLUDED.is_active,
+        updated_at = NOW();
+    `;
+
     const [{ rows: accountRows }, { rows: settingsRows }, { rows: surveyRows }] = await Promise.all([
       sql<AccountRow>`
-        SELECT customer_id, customer_name, main_page_path, updated_at::text
+        SELECT customer_id, customer_name, main_page_path, is_active, updated_at::text
         FROM customer_accounts
-        WHERE customer_id = ${customerId}
+        WHERE customer_id = ${canonicalCustomerId}
         LIMIT 1;
       `,
       sql<SettingRow>`
         SELECT data, updated_at::text
         FROM customer_app_settings
-        WHERE customer_id = ${customerId}
+        WHERE customer_id = ${canonicalCustomerId}
         LIMIT 1;
       `,
       sql<SurveyRow>`
         SELECT id, rating, comment, created_at::text
         FROM surveys
-        WHERE COALESCE(NULLIF(category, ''), 'default') = ${customerId}
+        WHERE COALESCE(NULLIF(category, ''), 'default') = ${canonicalCustomerId}
         ORDER BY created_at DESC
         LIMIT 20;
       `,
@@ -106,9 +127,9 @@ export async function GET(
       : 0;
 
     return NextResponse.json({
-      customerId,
+      customerId: canonicalCustomerId,
       customerName: account?.customer_name || trustAccount.name || '',
-      mainPagePath: account?.main_page_path || `/main?customerId=${encodeURIComponent(customerId)}`,
+      mainPagePath: account?.main_page_path || `/main?customerId=${encodeURIComponent(canonicalCustomerId)}`,
       hasPassword: Boolean(trustAccount.chatPasswordSet),
       accountUpdatedAt: trustAccount.updatedAt || account?.updated_at || null,
       settingsUpdatedAt: settings?.updated_at || null,
@@ -137,7 +158,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'customerIdは必須です' }, { status: 400 });
     }
 
-    const trustAccount = await findTrustAccountByPaletteId(customerId);
+    const trustAccount = await findTrustAccountByCustomerId(customerId);
     if (!trustAccount) {
       return NextResponse.json({ error: 'Pal Trust契約顧客が見つかりません' }, { status: 404 });
     }

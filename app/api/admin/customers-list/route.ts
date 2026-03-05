@@ -4,7 +4,9 @@ import { listTrustAccountsFromPalDb } from '@/app/api/_lib/pal-trust-accounts';
 
 type ListRow = {
   customer_id: string;
+  customer_name: string | null;
   main_page_path: string | null;
+  is_active: boolean | null;
 };
 
 type SettingsRow = {
@@ -40,6 +42,16 @@ async function ensureTables() {
   `;
 
   await sql`
+    ALTER TABLE customer_accounts
+    ADD COLUMN IF NOT EXISTS customer_name TEXT;
+  `;
+
+  await sql`
+    ALTER TABLE customer_accounts
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS customer_app_settings (
       customer_id TEXT PRIMARY KEY,
       data JSONB NOT NULL,
@@ -57,9 +69,27 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
+    await Promise.all(
+      trustAccounts.map((account) => {
+        const customerId = String(account.paletteId || '').trim().toUpperCase();
+        const customerName = String(account.name || '').trim();
+        const isActive = String(account.status || '').toLowerCase() === 'active';
+        return sql`
+          INSERT INTO customer_accounts (customer_id, customer_name, main_page_path, password_hash, is_active, updated_at)
+          VALUES (${customerId}, ${customerName}, ${`/main?customerId=${encodeURIComponent(customerId)}`}, ${''}, ${isActive}, NOW())
+          ON CONFLICT (customer_id)
+          DO UPDATE SET
+            customer_name = COALESCE(NULLIF(EXCLUDED.customer_name, ''), customer_accounts.customer_name),
+            main_page_path = EXCLUDED.main_page_path,
+            is_active = EXCLUDED.is_active,
+            updated_at = NOW();
+        `;
+      }),
+    );
+
     const [{ rows: profileRows }, { rows: settingsRows }, { rows: surveyAggRows }] = await Promise.all([
       sql<ListRow>`
-        SELECT customer_id, main_page_path
+        SELECT customer_id, customer_name, main_page_path, is_active
         FROM customer_accounts
       `,
       sql<SettingsRow>`
@@ -76,10 +106,6 @@ export async function GET() {
         GROUP BY 1
       `,
     ]);
-
-    const accountMap = new Map(
-      trustAccounts.map((account) => [String(account.paletteId), account]),
-    );
 
     const profileMap = new Map(profileRows.map((row) => [String(row.customer_id), row]));
     const settingsMap = new Map(settingsRows.map((row) => [String(row.customer_id), row.settings_data || null]));
@@ -98,9 +124,9 @@ export async function GET() {
 
       return {
         customerId,
-        customerName: account.name || '',
+        customerName: profile?.customer_name || account.name || '',
         mainPagePath: profile?.main_page_path || `/main?customerId=${encodeURIComponent(customerId)}`,
-        isActive: String(account.status || '').toLowerCase() === 'active',
+        isActive: profile?.is_active ?? (String(account.status || '').toLowerCase() === 'active'),
         hasPassword: Boolean(account.chatPasswordSet),
         createdAt: account.createdAt || null,
         updatedAt: account.updatedAt || null,

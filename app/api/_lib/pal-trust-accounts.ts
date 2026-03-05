@@ -22,6 +22,7 @@ type PlanItem = {
 };
 
 const normalize = (value: string | null | undefined) => String(value || '').trim().toLowerCase();
+const normalizeCustomerId = (value: string | null | undefined) => String(value || '').normalize('NFKC').trim().toUpperCase();
 
 const isPalTrustPlanCode = (code: string): boolean => {
   const normalized = normalize(code).replace(/-/g, '_');
@@ -80,8 +81,19 @@ export const listTrustAccountsFromPalDb = async (): Promise<PalDbAccount[]> => {
 };
 
 export const findTrustAccountByPaletteId = async (paletteId: string): Promise<PalDbAccount | null> => {
-  const target = String(paletteId || '').trim().toUpperCase();
+  const target = normalizeCustomerId(paletteId);
   if (!target) return null;
   const accounts = await listTrustAccountsFromPalDb();
-  return accounts.find((account) => String(account.paletteId || '').trim().toUpperCase() === target) || null;
+  return accounts.find((account) => normalizeCustomerId(account.paletteId) === target) || null;
+};
+
+export const findTrustAccountByCustomerId = async (customerId: string): Promise<PalDbAccount | null> => {
+  const target = normalizeCustomerId(customerId);
+  if (!target) return null;
+  const accounts = await listTrustAccountsFromPalDb();
+  return (
+    accounts.find((account) =>
+      normalizeCustomerId(account.paletteId) === target || normalizeCustomerId(account.chatLoginId) === target,
+    ) || null
+  );
 };
